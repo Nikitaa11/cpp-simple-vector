@@ -29,52 +29,44 @@ public:
     SimpleVector() noexcept = default;
 
     // Создаёт вектор из size элементов, инициализированных значением по умолчанию
-    explicit SimpleVector(size_t size) {
-        if (size > 0) {
-            items_ = ArrayPtr<Type>(size);
-            std::fill(items_.Get(), items_.Get() + size, Type{});
-        }
-        size_ = size;
-        capacity_ = size;
+    explicit SimpleVector(size_t size) : SimpleVector(size, Type{}) {
     }
 
     // Создаёт вектор из size элементов, инициализированных значением value
-    SimpleVector(size_t size, const Type& value) {
+    SimpleVector(size_t size, const Type& value)
+        : items_(size > 0 ? ArrayPtr<Type>(size) : ArrayPtr<Type>())
+        , size_(size)
+        , capacity_(size) {
         if (size > 0) {
-            items_ = ArrayPtr<Type>(size);
             std::fill(items_.Get(), items_.Get() + size, value);
         }
-        size_ = size;
-        capacity_ = size;
     }
 
     // Создаёт вектор из std::initializer_list
-    SimpleVector(std::initializer_list<Type> init) {
+    SimpleVector(std::initializer_list<Type> init)
+        : items_(init.size() > 0 ? ArrayPtr<Type>(init.size()) : ArrayPtr<Type>())
+        , size_(init.size())
+        , capacity_(init.size()) {
         if (init.size() > 0) {
-            items_ = ArrayPtr<Type>(init.size());
             std::copy(init.begin(), init.end(), items_.Get());
         }
-        size_ = init.size();
-        capacity_ = init.size();
     }
 
     // Конструктор с резервированием памяти
-    explicit SimpleVector(ReserveProxyObj capacity) {
-        if (capacity.capacity_to_reserve_ > 0) {
-            items_ = ArrayPtr<Type>(capacity.capacity_to_reserve_);
-        }
-        size_ = 0;
-        capacity_ = capacity.capacity_to_reserve_;
+    explicit SimpleVector(ReserveProxyObj capacity)
+        : items_(capacity.capacity_to_reserve_ > 0 ? ArrayPtr<Type>(capacity.capacity_to_reserve_) : ArrayPtr<Type>())
+        , size_(0)
+        , capacity_(capacity.capacity_to_reserve_) {
     }
 
     // Конструктор копирования
-    SimpleVector(const SimpleVector& other) {
+    SimpleVector(const SimpleVector& other)
+        : items_(other.capacity_ > 0 ? ArrayPtr<Type>(other.capacity_) : ArrayPtr<Type>())
+        , size_(other.size_)
+        , capacity_(other.capacity_) {
         if (other.capacity_ > 0) {
-            items_ = ArrayPtr<Type>(other.capacity_);
             std::copy(other.items_.Get(), other.items_.Get() + other.size_, items_.Get());
         }
-        size_ = other.size_;
-        capacity_ = other.capacity_;
     }
 
     // Конструктор перемещения
@@ -84,6 +76,10 @@ public:
 
     SimpleVector& operator=(const SimpleVector& rhs) {
         if (this != &rhs) {
+            if (rhs.IsEmpty()) {
+                Clear();
+                return *this;
+            }
             SimpleVector<Type> tmp(rhs);
             swap(tmp);
         }
