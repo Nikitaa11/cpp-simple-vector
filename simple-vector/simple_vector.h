@@ -79,11 +79,7 @@ public:
 
     // Конструктор перемещения
     SimpleVector(SimpleVector&& other) noexcept {
-        items_ = std::move(other.items_);
-        size_ = other.size_;
-        capacity_ = other.capacity_;
-        other.size_ = 0;
-        other.capacity_ = 0;
+        swap(other);
     }
 
     SimpleVector& operator=(const SimpleVector& rhs) {
@@ -97,11 +93,7 @@ public:
     // Оператор присваивания перемещением
     SimpleVector& operator=(SimpleVector&& rhs) noexcept {
         if (this != &rhs) {
-            items_ = std::move(rhs.items_);
-            size_ = rhs.size_;
-            capacity_ = rhs.capacity_;
-            rhs.size_ = 0;
-            rhs.capacity_ = 0;
+            swap(rhs);
         }
         return *this;
     }
@@ -126,11 +118,13 @@ public:
 
     // Возвращает ссылку на элемент с индексом index
     Type& operator[](size_t index) noexcept {
+        assert(index < size_);
         return items_[index];
     }
 
     // Возвращает константную ссылку на элемент с индексом index
     const Type& operator[](size_t index) const noexcept {
+        assert(index < size_);
         return items_[index];
     }
 
@@ -221,9 +215,7 @@ public:
             size_t new_capacity = (capacity_ == 0) ? 1 : capacity_ * 2;
             ArrayPtr<Type> new_items(new_capacity);
             if (items_.Get()) {
-                for (size_t i = 0; i < size_; ++i) {
-                    new_items[i] = std::move(items_[i]);
-                }
+                std::copy(items_.Get(), items_.Get() + size_, new_items.Get());
             }
             items_ = std::move(new_items);
             capacity_ = new_capacity;
@@ -237,9 +229,7 @@ public:
             size_t new_capacity = (capacity_ == 0) ? 1 : capacity_ * 2;
             ArrayPtr<Type> new_items(new_capacity);
             if (items_.Get()) {
-                for (size_t i = 0; i < size_; ++i) {
-                    new_items[i] = std::move(items_[i]);
-                }
+                std::move(items_.Get(), items_.Get() + size_, new_items.Get());
             }
             items_ = std::move(new_items);
             capacity_ = new_capacity;
@@ -250,23 +240,18 @@ public:
     // Вставляет значение value в позицию pos.
     // Возвращает итератор на вставленное значение
     Iterator Insert(ConstIterator pos, const Type& value) {
+        assert(pos >= begin() && pos <= end());
         size_t index = pos - begin();
         if (size_ == capacity_) {
             size_t new_capacity = (capacity_ == 0) ? 1 : capacity_ * 2;
             ArrayPtr<Type> new_items(new_capacity);
-            for (size_t i = 0; i < index; ++i) {
-                new_items[i] = std::move(items_[i]);
-            }
+            std::copy(items_.Get(), items_.Get() + index, new_items.Get());
             new_items[index] = value;
-            for (size_t i = index; i < size_; ++i) {
-                new_items[i + 1] = std::move(items_[i]);
-            }
+            std::copy(items_.Get() + index, items_.Get() + size_, new_items.Get() + index + 1);
             items_ = std::move(new_items);
             capacity_ = new_capacity;
         } else {
-            for (size_t i = size_; i > index; --i) {
-                items_[i] = std::move(items_[i - 1]);
-            }
+            std::move_backward(items_.Get() + index, items_.Get() + size_, items_.Get() + size_ + 1);
             items_[index] = value;
         }
         ++size_;
@@ -275,23 +260,18 @@ public:
 
     // Вставляет значение value в позицию pos с использованием move-семантики
     Iterator Insert(ConstIterator pos, Type&& value) {
+        assert(pos >= begin() && pos <= end());
         size_t index = pos - begin();
         if (size_ == capacity_) {
             size_t new_capacity = (capacity_ == 0) ? 1 : capacity_ * 2;
             ArrayPtr<Type> new_items(new_capacity);
-            for (size_t i = 0; i < index; ++i) {
-                new_items[i] = std::move(items_[i]);
-            }
+            std::move(items_.Get(), items_.Get() + index, new_items.Get());
             new_items[index] = std::move(value);
-            for (size_t i = index; i < size_; ++i) {
-                new_items[i + 1] = std::move(items_[i]);
-            }
+            std::move(items_.Get() + index, items_.Get() + size_, new_items.Get() + index + 1);
             items_ = std::move(new_items);
             capacity_ = new_capacity;
         } else {
-            for (size_t i = size_; i > index; --i) {
-                items_[i] = std::move(items_[i - 1]);
-            }
+            std::move_backward(items_.Get() + index, items_.Get() + size_, items_.Get() + size_ + 1);
             items_[index] = std::move(value);
         }
         ++size_;
@@ -307,12 +287,11 @@ public:
 
     // Удаляет элемент вектора в указанной позиции
     Iterator Erase(ConstIterator pos) {
+        assert(pos >= begin() && pos < end());
         size_t index = pos - begin();
-        for (size_t i = index; i < size_ - 1; ++i) {
-            items_[i] = std::move(items_[i + 1]);
-        }
+        std::move(items_.Get() + index + 1, items_.Get() + size_, items_.Get() + index);
         --size_;
-        return items_.Get() + index;  
+        return items_.Get() + index;
     }
 
     // Обменивает значение с другим вектором

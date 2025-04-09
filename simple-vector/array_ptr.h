@@ -28,16 +28,13 @@ public:
 
     // Конструктор перемещения
     ArrayPtr(ArrayPtr&& other) noexcept {
-        raw_ptr_ = other.raw_ptr_;
-        other.raw_ptr_ = nullptr;
+        swap(other);
     }
 
     // Оператор присваивания перемещением
     ArrayPtr& operator=(ArrayPtr&& other) noexcept {
         if (this != &other) {
-            delete[] raw_ptr_;
-            raw_ptr_ = other.raw_ptr_;
-            other.raw_ptr_ = nullptr;
+            swap(other);
         }
         return *this;
     }
